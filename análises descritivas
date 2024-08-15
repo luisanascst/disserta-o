@@ -1,0 +1,398 @@
+set.seed(123)
+
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(tidyselect)
+library(tidyverse)
+library(broom)
+library(corrplot)
+library(dplyr)
+library(GGally)
+library(ggforce)
+library(gridExtra)
+library(kableExtra)
+library(haven)
+library(matrixStats)
+library(psych)
+library(readr)
+library(readxl)
+library(forcats)
+
+
+
+# mostrar a contagem de partidos eurocéticos e populistas por país na Europa
+  populist_parties <- The_PopuList_3_0 %>%
+   +     filter(populist == TRUE)
+  View(populist_parties)
+  votes_by_year_country <- populist_parties %>%
+   +     group_by(year, country_name) %>%
+   +     summarise(total_votes = sum(votes))
+  populist_in_parliament <- populist_parties %>%
+   +     filter(in_parliament == TRUE)
+  total_populist_in_parliament <- nrow(populist_in_parliament)
+  total_populist_in_parliament
+  populist_in_parliament_by_country <- populist_parties %>%
+   +     filter(in_parliament == TRUE) %>%
+   +     group_by(country_name) %>%
+   +     summarise(count = n())
+  
+ # fiz o mesmo processo com partidos eurocéticos
+  eurosceptic_parties <- The_PopuList_3_0 %>%
+    +     filter(populist == TRUE)
+  
+  View(eurosceptic_parties)
+  
+  #votos por ano e país
+  votes_by_year_country <- eurosceptic_parties %>%
+    +     group_by(year, country_name) %>%
+    +     summarise(total_votes = sum(votes))
+  populist_in_parliament <- populist_parties %>%
+    +     filter(in_parliament == TRUE)
+  
+  total_populist_in_parliament <- nrow(populist_in_parliament)
+  
+  total_populist_in_parliament
+  
+  populist_in_parliament_by_country <- populist_parties %>%
+    +     filter(in_parliament == TRUE) %>%
+    +     group_by(country_name) %>%
+    +     summarise(count = n())
+  
+ # gráfico partidos populistas
+  ggplot(populist_in_parliament_by_country, aes(x = country_name, y = count, fill = country_name)) +
+   +     geom_bar(stat = "identity") +
+   +     labs(title = "Contagem de Partidos Populistas no Parlamento por País",
+              +          x = "País",
+              +          y = "Contagem de Partidos Populistas") +
+   +     theme_minimal() +
+   +     scale_fill_viridis_d(option = "plasma") +
+   +     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+   +     scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+ 
+# correlação dos dois grupos de variáveis (atributos)
+ constru_sociedade <- select(ess, trstep, stfdem, stfgov, euftf)
+ constru_atitudes <- select(ess, lrscale, imbgeco, imueclt, imwbcnt, atchctr, atcherp)
+
+ # excluir na's e dummies
+  grupo1 <- constru_sociedade %>% 
+   +          filter_all(all_vars(!(. %in% c(77, 88, 99))))
+  grupo2 <- constru_atitudes %>% 
+   +          filter_all(all_vars(!(. %in% c(77, 88, 99))))
+
+  # descrição dos dados usando psych e fazer para os dois grupos
+ psych::describe(grupo1)
+ 
+ #obter estatísticas descritivas, fazer para os dois grupos
+ desc_stats <- psych::describe(grupo1)
+ 
+ #colocar em df (para os dois grupos)
+ desc_df <- as.data.frame(desc_stats)
+ 
+ #coluna com nome das variáveis (para os dois grupos)
+ desc_df$Variável <- rownames(desc_df)
+ 
+ #nome das variáveis na primeira coluna (para os dois grupos)
+ desc_df <- desc_df %>%
+   select(variable, everything())
+ 
+ #tabela das análises descritivas
+ kable(desc_df, format = "html", table.attr = "class='table table-striped'") %>%
+   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                 full_width = F,
+                 position = "center") %>%
+   scroll_box(width = "100%", height = "500px")
+
+ # intervalo de confiança (para os dois grupos)
+ grupo1 %>% 
+   +     metan::corr_ci() %>%
+   +     metan::plot_ci()
+ 
+# correlação das variáveis (para os dois grupos)
+ cor_grupo1 <- cor(grupo1)
+ 
+# excluir na's da matriz (para os dois grupos)
+ cor_grupo1[is.na(cor_grupo1)] <- 0
+ 
+# visualizar a matriz (para os dois grupos)
+ ggcorrplot(cor_grupo1, hc.order = TRUE, type = "lower", 
+            +            lab = TRUE, lab_size = 3, 
+            +            method = "circle", 
+            +            colors = c("tomato2", "white", "springgreen3"), 
+            +            title = "Correlação das Variáveis", 
+            +            ggtheme = theme_bw)
+ 
+ 
+ # mostrar a evolução na média das variáveis euftf e trstep 
+ trstep <- select(ess, trstep, essround)
+ 
+ #tirar os valores 77, 88, 99
+ trstep <- trstep %>% 
+   +     +          filter_all(all_vars(!(. %in% c(77, 88, 99)))) 
+ 
+ #tirar nas
+ na.omit(trstep)
+ 
+ 
+ #gráfico para mostrar a evolução das variáveis por país
+ # excluir valores (77, 88, 99) e valores ausentes de trstep
+ ess_filtered <- ess %>%
+   filter(!trstep %in% c(77, 88, 99), !is.na(trstep))
+ 
+## média de trstep para cada país
+ trstep_means_by_country <- ess_filtered %>%
+   group_by(cntry) %>%
+   summarise(mean_trstep = mean(trstep, na.rm = TRUE))
+ 
+ #gráfico
+ ggplot(trstep_means_by_country, aes(x = reorder(cntry, -mean_trstep), y = mean_trstep)) +
+   geom_bar(stat = "identity", fill = "steelblue") +
+   labs(title = "Média de trstep por País",
+        x = "País",
+        y = "Média de trstep") +
+   theme_minimal() +
+   theme(axis.text.x = element_text(angle = 45, hjust = 1)
+  
+ # média de trstep para cada round
+  trstep_means <- ess_filtered %>%
+    group_by(essround) %>%
+    summarise(mean_trstep = mean(trstep, na.rm = TRUE))
+  
+ #gráfico de linha
+  ggplot(trstep_means, aes(x = essround, y = mean_trstep)) +
+    geom_line(color = "blue") +
+    geom_point(color = "red") +
+    labs(title = "Evolução da Média de trstep por Round",
+         x = "Round",
+         y = "Média de trstep") +
+    theme_minimal()
+ 
+ #gráfico para as variáveis de imigração
+ ess_filtered <- ess %>%
+    filter(!is.na(imueclt) & !imueclt %in% c(77, 88, 99), 
+           !is.na(imwbcnt) & !imwbcnt %in% c(77, 88, 99), 
+           !is.na(imbgeco) & !imbgeco %in% c(77, 88, 99))
+ 
+ #média das variáveis para cada round
+ means_by_round <- ess_filtered %>%
+   group_by(essround) %>%
+   summarise(mean_imueclt = mean(imueclt, na.rm = TRUE),
+             mean_imwbcnt = mean(imwbcnt, na.rm = TRUE),
+             mean_imbgeco = mean(imbgeco, na.rm = TRUE))
+ 
+ #mudando o formato da base
+ means_long <- means_by_round %>%
+   pivot_longer(cols = starts_with("mean_"), 
+                names_to = "variable", 
+                values_to = "mean_value")
+ 
+ #gráfico de linha
+ ggplot(means_long, aes(x = essround, y = mean_value, color = variable)) +
+   geom_line() +
+   geom_point() +
+   labs(title = "Evolução das Médias das Variáveis por Round",
+        x = "Round",
+        y = "Média",
+        color = "Variável") +
+   theme_minimal()
+ 
+ #filtrar os dados para o grupo de variáveis da esquerda radical 
+ ess_filtered <- ess %>%
+   filter(!is.na(ipeqotp) & !ipeqotp %in% c(77, 88, 99), 
+          !is.na(ipudrst) & !ipudrst %in% c(77, 88, 99), 
+          !is.na(iphlppl) & !iphlppl %in% c(77, 88, 99)
+ 
+ #média das variáveis de interesse para cada round
+ means_by_round <- ess_filtered %>%
+   group_by(essround) %>%
+   summarise(mean_ipeqotp = mean(ipeqotp, na.rm = TRUE),
+             mean_ipudrst = mean(ipudrst, na.rm = TRUE),
+             mean_iphlppl = mean(iphlppl, na.rm = TRUE)
+ 
+ #mudar o formato da base
+ means_long <- means_by_round %>%
+   pivot_longer(cols = starts_with("mean_"), 
+                names_to = "variable", 
+                values_to = "mean_value")
+ 
+ #gráfico de linha
+ ggplot(means_long, aes(x = essround, y = mean_value, color = variable)) +
+   geom_line() +
+   geom_point() +
+   labs(title = "Evolução das Médias das Variáveis por Round",
+        x = "Round",
+        y = "Média",
+        color = "Variável") +
+   theme_minimal()
+ 
+ #agora por país e round
+ #filtrar para dummies e na's
+ ess_filtered_ipeqotp <- ess %>%
+   filter(!is.na(ipeqotp) & !ipeqotp %in% c(77, 88, 99))
+ 
+ ess_filtered_ipudrst <- ess %>%
+   filter(!is.na(ipudrst) & !ipudrst %in% c(77, 88, 99))
+ 
+ ess_filtered_iphlppl <- ess %>%
+   filter(!is.na(iphlppl) & !iphlppl %in% c(77, 88, 99))
+ 
+ #juntar os dfs
+ ess_filtered <- ess_filtered_ipeqotp %>%
+   inner_join(ess_filtered_ipudrst, by = c("essround", "cntry")) %>%
+   inner_join(ess_filtered_iphlppl, by = c("essround", "cntry"))
+ 
+ # média por país e round
+ means_by_country_round <- ess_filtered %>%
+   group_by(cntry, essround) %>%
+   summarise(mean_ipeqotp = mean(ipeqotp, na.rm = TRUE),
+             mean_ipudrst = mean(ipudrst, na.rm = TRUE),
+             mean_iphlppl = mean(iphlppl, na.rm = TRUE)
+ 
+ #mudando o formato da base
+ means_long <- means_by_country_round %>%
+   pivot_longer(cols = starts_with("mean_"), 
+                names_to = "variable", 
+                values_to = "mean_value")
+ 
+ #gráfico de linha
+ ggplot(means_long, aes(x = essround, y = mean_value, color = variable)) +
+   geom_line() +
+   geom_point() +
+   facet_wrap(~ cntry, scales = "free_y") +
+   labs(title = "Evolução das Médias das Variáveis por País e Round",
+        x = "Round",
+        y = "Média",
+        color = "Variável") +
+   theme_minimal()
+ 
+ #fazendo o mesmo para as variáveis de imigração
+ 
+ #filtrando os dados
+ ess_filtered_imwbcnt <- ess %>%
+   filter(!is.na(imwbcnt) & !imwbcnt %in% c(77, 88, 99)) %>%
+   select(cntry, essround, imwbcnt)
+ 
+ ess_filtered_imueclt <- ess %>%
+   filter(!is.na(imueclt) & !imueclt %in% c(77, 88, 99)) %>%
+   select(cntry, essround, imueclt)
+ 
+ ess_filtered_imbgeco <- ess %>%
+   filter(!is.na(imbgeco) & !imbgeco %in% c(77, 88, 99)) %>%
+   select(cntry, essround, imbgeco)
+ 
+ #médias das variáveis
+ means_imwbcnt <- ess_filtered_imwbcnt %>%
+   group_by(cntry, essround) %>%
+   summarise(mean_imwbcnt = mean(imwbcnt, na.rm = TRUE))
+ 
+ means_imueclt <- ess_filtered_imueclt %>%
+   group_by(cntry, essround) %>%
+   summarise(mean_imueclt = mean(imueclt, na.rm = TRUE))
+ 
+ means_imbgeco <- ess_filtered_imbgeco %>%
+   group_by(cntry, essround) %>%
+   summarise(mean_imbgeco = mean(imbgeco, na.rm = TRUE))
+ 
+ #juntar as médias calculadas
+ means_combined <- means_imwbcnt %>%
+   full_join(means_imueclt, by = c("cntry", "essround")) %>%
+   full_join(means_imbgeco, by = c("cntry", "essround"))
+ 
+ #mudando o formato da base
+ means_long <- means_combined %>%
+   pivot_longer(cols = starts_with("mean_"), 
+                names_to = "variable", 
+                values_to = "mean_value")
+ 
+ #gráfico de linha
+ ggplot(means_long, aes(x = essround, y = mean_value, color = variable)) +
+   geom_line() +
+   geom_point() +
+   facet_wrap(~ cntry, scales = "free_y") +
+   labs(title = "Evolução das Médias das Variáveis por País e Round",
+        x = "Round",
+        y = "Média",
+        color = "Variável") +
+   theme_minimal()
+ 
+ 
+ #partidos de direita radical e esquerda radical ches data 
+ radical_parties <- ches9919 %>%
+   +     filter(family == 1 | family == 6)
+ View(radical_parties)
+ 
+ #nomes dos países para partidos de esquerda radical
+ left_country_names <- c("2" = "Denmark", "4" = "Greece", "12" = "Portugal", "21" = "Czech Republic", "40" = "Cyprus")
+ 
+ #nomes dos países para partidos de direita radical
+ right_country_names <- c("2" = "Denmark", "6" = "France", "13" = "Austria", "23" = "Hungary", "26" = "Poland")
+ 
+ #substituir valores numéricos pelos nomes dos países para os 5 países com mais votos
+ top5_left$country <- left_country_names[as.character(top5_left$country)]
+ top5_right$country <- right_country_names[as.character(top5_right$country)]
+ 
+ #gráfico para a esquerda radical
+ ggplot(top5_left, aes(x = reorder(country, -total_votes), y = total_votes, fill = country)) +
+   geom_bar(stat = "identity") +
+   labs(title = "Países com Mais Votos para Partidos da Esquerda Radical",
+        x = "País",
+        y = "Total de Votos") +
+   theme_minimal() +
+   theme(legend.position = "none")
+ 
+ #gráfico para a direita radical
+ ggplot(top5_right, aes(x = reorder(country, -total_votes), y = total_votes, fill = country)) +
+   geom_bar(stat = "identity") +
+   labs(title = "Países com Mais Votos para Partidos da Direita Radical",
+        x = "País",
+        y = "Total de Votos") +
+   theme_minimal() +
+   theme(legend.position = "none")
+ 
+ #filtrar partidos da direita radical (family = 1) e da esquerda radical (family = 6) para os anos de interesse
+ radical_parties <- ches_data %>%
+   filter(family %in% c(1, 6), year %in% c(2010, 2014, 2019))
+ 
+ #agrupar por 'year', 'family' e 'party', e somar os votos
+ votes_by_party <- radical_parties %>%
+   group_by(year, family, party) %>%
+   summarise(total_votes = sum(vote_share, na.rm = TRUE)) %>%
+   ungroup()
+ 
+ #partido mais votado para cada combinação de ano e família
+ top_party_per_year <- votes_by_party %>%
+   group_by(year, family) %>%
+   slice_max(order_by = total_votes, n = 1) %>%
+   ungroup()
+ 
+ #agrupar por 'year', 'family' e 'party', e somar os votos
+ votes_by_party <- radical_parties %>%
+   group_by(year, family, party) %>%
+   summarise(total_votes = sum(vote_share, na.rm = TRUE)) %>%
+   ungroup()
+ 
+ #partido mais votado para cada combinação de ano e família
+ top_party_per_year <- votes_by_party %>%
+   group_by(year, family) %>%
+   slice_max(order_by = total_votes, n = 1) %>%
+   ungroup()
+ 
+ #gráfico para a esquerda radical
+ ggplot(top_party_per_year %>% filter(family == 6), aes(x = year_party, y = total_votes, fill = party)) +
+   geom_bar(stat = "identity") +
+   labs(title = "Partido Mais Votado para a Esquerda Radical",
+        x = "Ano - Partido",
+        y = "Total de Votos") +
+   theme_minimal() +
+   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ 
+ #gráfico para a direita radical
+ ggplot(top_party_per_year %>% filter(family == 1), aes(x = year_party, y = total_votes, fill = party)) +
+   geom_bar(stat = "identity") +
+   labs(title = "Partido Mais Votado para a Direita Radical",
+        x = "Ano - Partido",
+        y = "Total de Votos") +
+   theme_minimal() +
+   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ 
+ 
